@@ -12,10 +12,12 @@
   "dependencies": {
     "@vis.gl/react-google-maps": "^1.1.1",
     "axios": "^1.7.7",
+    "firebase": "^10.13.1",
     "prop-types": "^15.8.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.1"
+    "react-router-dom": "^6.26.1",
+    "socket.io-client": "^4.7.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",

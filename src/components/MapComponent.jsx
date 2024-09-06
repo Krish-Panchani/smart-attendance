@@ -5,7 +5,6 @@ import PropTypes from 'prop-types';
 const MapComponent = ({ userLocation, officeLocation, range }) => {
   const [infoContent, setInfoContent] = useState('');
   console.log('userLocation', userLocation);
-  console.log('officeLocation', officeLocation);
 
   useEffect(() => {
     if (userLocation && officeLocation) {
@@ -73,7 +72,11 @@ const MapComponent = ({ userLocation, officeLocation, range }) => {
         </AdvancedMarker>
       )}
       {userLocation && (
-       <Marker position={userLocation} />
+        <Marker
+          position={userLocation}
+          label="You"
+        // onClick={() => setInfoContent('Your Location')}
+        />
       )}
       {/* Use a different way to represent the range if necessary */}
       {infoContent && userLocation && (
@@ -95,12 +98,6 @@ MapComponent.propTypes = {
     lng: PropTypes.number.isRequired,
   }),
   range: PropTypes.number.isRequired,
-};
-
-MapComponent.defaultProps = {
-  userLocation: { lat: 0, lng: 0 },
-  officeLocation: { lat: 0, lng: 0 },
-  range: 0,
 };
 
 export default MapComponent;

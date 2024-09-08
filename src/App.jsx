@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage';
 import TrackLocation from './components/TrackLocation';
 import AboutPage from './pages/AboutPage';
 import NotFoundPage from './pages/NotFoundPage';
+import LocationTracker from './components/LocationTracker';
 
 const App = () => {
   return (
@@ -12,6 +13,7 @@ const App = () => {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/track-location" element={<TrackLocation />} />
+        <Route path="/location" element={<LocationTracker />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

@@ -1,4 +1,3 @@
-// src/components/OfficeLogs.js
 import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
 
@@ -26,10 +25,10 @@ const TodayLogs = ({ logs }) => (
         </tr>
       </thead>
       <tbody className="bg-white divide-y divide-gray-300">
-        {logs.map(log => (
-          <tr key={log.id}>
+        {logs.map((log) => (
+          <tr key={log.id || log.timestamp}>
             <td className="px-6 py-4 whitespace-nowrap">
-              {log.timestamp.toDate().toLocaleString()}
+              {log.timestamp ? (new Date(log.timestamp).toLocaleString()) : 'Invalid date'}
             </td>
             <td className="px-6 py-4 whitespace-nowrap">
               {log.status}

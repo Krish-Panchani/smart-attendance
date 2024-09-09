@@ -1,10 +1,9 @@
-// src/hooks/useLocationTracker.js
 import { useState, useEffect, useCallback } from 'react';
-import { collection, query, where, getDocs, addDoc, Timestamp, onSnapshot, orderBy } from 'firebase/firestore';
-import { db } from '../firebase';
+import { ref, onValue, set, push, serverTimestamp, get } from 'firebase/database';
+import { rtdb } from '../firebase';
 import { calculateDistance } from '../helpers/calculateDistance';
 
-const officeLocation = { lat: 23.0490112, lon: 73.5549056 }; // Replace with office coordinates
+const officeLocation = { lat: 23.0916096, lon: 72.5385216 }; // Replace with office coordinates
 const checkinDistance = 100; // meters
 const userId = "123456"; // Replace with dynamic user ID if necessary
 
@@ -15,31 +14,12 @@ export const useLocationTracker = () => {
   const [logs, setLogs] = useState([]);
   const [effectiveTime, setEffectiveTime] = useState(0);
 
-  const updateLogs = useCallback(async () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const logsRef = collection(db, 'logs');
-    const logsQuery = query(
-      logsRef,
-      where('userId', '==', userId),
-      where('timestamp', '>=', Timestamp.fromDate(today)),
-      orderBy('timestamp')
-    );
-
-    const snapshot = await getDocs(logsQuery);
-    const logsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-
-    setLogs(logsData);
-    calculateEffectiveTime(logsData);
-  }, [userId]);
-
   const calculateEffectiveTime = useCallback((logs) => {
     let totalMinutes = 0;
     let lastCheckin = null;
 
     logs.forEach(log => {
-      const timestamp = log.timestamp.toDate();
+      const timestamp = new Date(log.timestamp); // Use numeric timestamp
       if (log.status === 'checkin') {
         lastCheckin = timestamp;
       } else if (log.status === 'checkout' && lastCheckin) {
@@ -50,7 +30,6 @@ export const useLocationTracker = () => {
     });
 
     if (isCheckedIn && lastCheckin) {
-      // Add time from last check-in to now if the user is still checked in
       const now = new Date();
       const diff = now - lastCheckin;
       totalMinutes += Math.round(diff / 60000);
@@ -59,92 +38,87 @@ export const useLocationTracker = () => {
     setEffectiveTime(totalMinutes);
   }, [isCheckedIn]);
 
-  useEffect(() => {
-    const checkLocation = async () => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(async (position) => {
-          const userLocation = {
-            lat: position.coords.latitude,
-            lon: position.coords.longitude,
-          };
+  const writeLog = useCallback(async (status) => {
+    const logRef = ref(rtdb, `logs/${userId}`);
+    const newLogRef = push(logRef);
 
-          const currentDistance = calculateDistance(
-            userLocation.lat,
-            userLocation.lon,
-            officeLocation.lat,
-            officeLocation.lon
-          );
+    await set(newLogRef, {
+      userId: userId,
+      status: status,
+      timestamp: serverTimestamp(),
+    });
+  }, []);
 
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
+  const checkLocation = useCallback(async () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const userLocation = {
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+        };
 
-          const logsRef = collection(db, 'logs');
-          const logsQuery = query(
-            logsRef,
-            where('userId', '==', userId),
-            where('timestamp', '>=', Timestamp.fromDate(today)),
-            orderBy('timestamp')
-          );
+        const currentDistance = calculateDistance(
+          userLocation.lat,
+          userLocation.lon,
+          officeLocation.lat,
+          officeLocation.lon
+        );
 
-          const snapshot = await getDocs(logsQuery);
-          const logExists = snapshot.docs.some(doc => doc.data().status === 'checkin');
+        console.log('User location:', userLocation);
+        console.log('Current distance:', currentDistance);
+        console.log('Is checked in:', isCheckedIn);
+        console.log('Logs:', logs);
 
-          if (currentDistance <= checkinDistance) {
-            if (!isCheckedIn) {
-              await addDoc(collection(db, 'logs'), {
-                userId: userId,
-                status: 'checkin',
-                timestamp: Timestamp.now(),
-              });
+        const logsRef = ref(rtdb, `logs/${userId}`);
+        const snapshot = await get(logsRef);
+        const logsData = snapshot.exists() ? Object.values(snapshot.val()) : [];
+        const lastCheckinLog = logsData.find(log => log.status === 'checkin');
+        
+        if (currentDistance <= checkinDistance) {
+          if (!isCheckedIn) {
+            if (!lastCheckinLog) {
+              await writeLog('checkin');
               setIsCheckedIn(true);
             }
-            setStatus('Checked in');
-            setDistance('Within range');
-          } else {
-            if (isCheckedIn && logExists) {
-              await addDoc(collection(db, 'logs'), {
-                userId: userId,
-                status: 'checkout',
-                timestamp: Timestamp.now(),
-              });
-              setIsCheckedIn(false);
-            }
-            setStatus('Checked out');
-            setDistance(`Distance from office: ${Math.round(currentDistance)} meters`);
           }
+          setStatus('Checked in');
+          setDistance('Within range');
+        } else {
+          if (isCheckedIn && lastCheckinLog) {
+            await writeLog('checkout');
+            setIsCheckedIn(false);
+          }
+          setStatus('Checked out');
+          setDistance(`Distance from office: ${Math.round(currentDistance)} meters`);
+        }
 
-          updateLogs();
-        }, (error) => {
-          console.error("Error getting location: ", error);
-        });
-      } else {
-        setStatus("Geolocation is not supported by this browser.");
-      }
-    };
-
-    checkLocation();
-    const intervalId = setInterval(checkLocation, 10000); // Adjust interval as needed
-
-    return () => clearInterval(intervalId);
-  }, [isCheckedIn, updateLogs]);
+        setLogs(logsData);
+        calculateEffectiveTime(logsData);
+      }, (error) => {
+        console.error("Error getting location: ", error);
+      });
+    } else {
+      setStatus("Geolocation is not supported by this browser.");
+    }
+  }, [isCheckedIn, writeLog, calculateEffectiveTime]);
 
   useEffect(() => {
-    const logsRef = collection(db, 'logs');
-    const logsQuery = query(
-      logsRef,
-      where('userId', '==', userId),
-      where('timestamp', '>=', Timestamp.fromDate(new Date())),
-      orderBy('timestamp')
-    );
+    checkLocation(); // Initial check
+    const intervalId = setInterval(checkLocation, 6000); // Check every minute
 
-    const unsubscribe = onSnapshot(logsQuery, (snapshot) => {
-      const logsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    return () => clearInterval(intervalId);
+  }, [checkLocation]);
+
+  useEffect(() => {
+    const logsRef = ref(rtdb, `logs/${userId}`);
+    const unsubscribe = onValue(logsRef, (snapshot) => {
+      const logsData = snapshot.val() ? Object.values(snapshot.val()) : [];
       setLogs(logsData);
       calculateEffectiveTime(logsData);
     });
 
     return () => unsubscribe();
-  }, [userId, calculateEffectiveTime]);
+  }, [calculateEffectiveTime]);
 
   return { status, distance, logs, effectiveTime, isCheckedIn };
 };

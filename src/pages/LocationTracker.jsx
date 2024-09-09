@@ -1,5 +1,3 @@
-// src/components/LocationTracker.js
-
 import { useLocationTracker } from '../hooks/useLocationTracker';
 import LocationStatus from '../components/LocationStatus';
 import TodayOfficeTime from '../components/TodayOfficeTime';
@@ -10,7 +8,7 @@ const LocationTracker = () => {
 
   return (
     <div className="p-6 max-w-3xl mx-auto bg-white shadow-md rounded-lg">
-      <LocationStatus status={status} distance={distance} />
+      <LocationStatus status={status} distance={distance || 'Distance unknown'} />
       <TodayOfficeTime logs={logs} effectiveTime={effectiveTime} />
       <TodayLogs logs={logs} />
     </div>

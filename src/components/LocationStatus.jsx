@@ -1,8 +1,7 @@
-// src/components/LocationStatus.js
 import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
 
-const LocationStatus = ({ status, distance }) => (
+const LocationStatus = ({ status, distance = 'Distance unknown' }) => (
   <>
     <motion.p
       className={`text-xl mb-2 text-center font-medium ${status === 'Checked out' ? 'text-red-600' : 'text-green-600'}`}
@@ -26,7 +25,7 @@ const LocationStatus = ({ status, distance }) => (
 
 LocationStatus.propTypes = {
   status: PropTypes.string.isRequired,
-  distance: PropTypes.string.isRequired,
+  distance: PropTypes.string,  // No longer required as default is provided
 };
 
 export default LocationStatus;

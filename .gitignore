@@ -1,4 +1,5 @@
 .env
+/src/Testing_Comp
 # Logs
 logs
 *.log

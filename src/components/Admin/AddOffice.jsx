@@ -91,6 +91,7 @@ const AddOffice = ({ user }) => {
 
     return (
         <>
+        {!offices && 
         <div>
             <h1>Add Office</h1>
             <input type="text" placeholder="Office Name" value={officeName} onChange={handleOficeName} />
@@ -99,6 +100,7 @@ const AddOffice = ({ user }) => {
             <button onClick={handleSetCurrentLocation}>Set Current Location</button>
             <button onClick={handleSubmit}>Add Office</button>
         </div>
+        }
         <div>
             <h1>Offices</h1>
             <ul>
@@ -110,6 +112,7 @@ const AddOffice = ({ user }) => {
                         <p>{offices.lat}</p>
                         <p>{offices.lng}</p>
                     </li>
+                    <button>Edit Office</button>
                     <button onClick={handleAddEmployee}>Add Employee</button>
                     </>
                 ))}

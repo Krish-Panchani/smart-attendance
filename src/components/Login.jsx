@@ -1,12 +1,14 @@
 // src/components/Login.jsx
 
 // import React from 'react';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
-import { db, auth } from '../../firebase'; // Make sure to import firestore
+import { db } from '../firebase'; // Make sure to import firestore
 import { FcGoogle } from "react-icons/fc";
 
 const Login = () => {
+
+  const auth = getAuth();
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();

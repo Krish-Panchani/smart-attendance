@@ -91,34 +91,80 @@ const AddOffice = ({ user }) => {
 
     return (
         <>
-        {!offices && 
-        <div>
-            <h1>Add Office</h1>
-            <input type="text" placeholder="Office Name" value={officeName} onChange={handleOficeName} />
-            <input type="number" placeholder="Latitude" value={currentLocation ? currentLocation.lat : latitude} onChange={handleLat} />
-            <input type="number" placeholder="Longitude" value={currentLocation ? currentLocation.lng : longitude} onChange={handleLng} />
-            <button onClick={handleSetCurrentLocation}>Set Current Location</button>
-            <button onClick={handleSubmit}>Add Office</button>
+  {!offices && (
+    <div className="max-w-lg mx-auto p-6 bg-white rounded-lg shadow-lg mt-8">
+      <h1 className="text-2xl font-bold mb-4 text-gray-800">Add Office</h1>
+      <div className="space-y-4">
+        <input
+          type="text"
+          placeholder="Office Name"
+          value={officeName}
+          onChange={handleOficeName}
+          className="w-full px-4 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-indigo-500"
+        />
+        <input
+          type="number"
+          placeholder="Latitude"
+          value={currentLocation ? currentLocation.lat : latitude}
+          onChange={handleLat}
+          className="w-full px-4 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-indigo-500"
+        />
+        <input
+          type="number"
+          placeholder="Longitude"
+          value={currentLocation ? currentLocation.lng : longitude}
+          onChange={handleLng}
+          className="w-full px-4 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-indigo-500"
+        />
+        <div className="flex space-x-4 mt-4">
+          <button
+            onClick={handleSetCurrentLocation}
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+          >
+            Set Current Location
+          </button>
+          <button
+            onClick={handleSubmit}
+            className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
+          >
+            Add Office
+          </button>
         </div>
-        }
-        <div>
-            <h1>Offices</h1>
-            <ul>
-                {offices.map((offices) => (
-                    <>
-                    <li key={offices.id}>
-                        <p>{offices.uniqueId}</p>
-                        <p>{offices.name}</p>
-                        <p>{offices.lat}</p>
-                        <p>{offices.lng}</p>
-                    </li>
-                    <button>Edit Office</button>
-                    <button onClick={handleAddEmployee}>Add Employee</button>
-                    </>
-                ))}
-            </ul>
-        </div>
-        </>
+      </div>
+    </div>
+  )}
+
+  <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg mt-8">
+    <h1 className="text-2xl font-bold mb-4 text-gray-800">Offices</h1>
+    <ul className="space-y-4">
+      {offices.map((office) => (
+        <li
+          key={office.id}
+          className="p-4 bg-gray-100 rounded-lg shadow-md flex justify-between items-center"
+        >
+          <div>
+            <p className="text-sm font-medium text-gray-500">ID: {office.uniqueId}</p>
+            <p className="text-lg font-semibold text-gray-700">{office.name}</p>
+            <p className="text-sm text-gray-600">Latitude: {office.lat}</p>
+            <p className="text-sm text-gray-600">Longitude: {office.lng}</p>
+          </div>
+          <div className="flex space-x-2">
+            <button className="bg-yellow-400 text-white px-2 py-1 rounded-md hover:bg-yellow-500">
+              Edit Office
+            </button>
+            <button
+              onClick={handleAddEmployee}
+              className="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600"
+            >
+              Add Employee
+            </button>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </div>
+</>
+
     );
 }
 

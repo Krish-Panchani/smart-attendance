@@ -1,4 +1,6 @@
 .env
+/build
+.firebase
 /src/Testing_Comp
 # Logs
 logs

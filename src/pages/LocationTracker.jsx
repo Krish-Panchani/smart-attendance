@@ -1,4 +1,4 @@
-import { useLocationTracker } from '../hooks/useLocationTracker';
+import  useLocationTracker from '../hooks/useLocationTracker';
 import LocationStatus from '../components/LocationStatus';
 import TodayOfficeTime from '../components/TodayOfficeTime';
 import TodayLogs from '../components/TodayLogs';

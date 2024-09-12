@@ -1,18 +1,41 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ref, onValue, set, push, serverTimestamp, get, update } from 'firebase/database';
-import { rtdb } from '../firebase';
+import { rtdb, db } from '../firebase';
 import { calculateDistance } from '../helpers/calculateDistance';
+import useAuth from './useAuth';
+import { collection, query, where, limit, onSnapshot } from 'firebase/firestore';
 
-const officeLocation = { lat: 23.0096896, lon: 72.6040576 };
-const checkinDistance = 100; // meters
-const userId = "123456"; // Replace with dynamic user ID if necessary
-
-export const useLocationTracker = () => {
+const useLocationTracker = () => {
   const [status, setStatus] = useState('Unknown');
   const [distance, setDistance] = useState(null);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [logs, setLogs] = useState([]);
   const [effectiveTime, setEffectiveTime] = useState(0);
+  const [officeLocation, setOfficeLocation] = useState({ lat: 0, lon: 0 });
+  const [checkinDistance, setCheckinDistance] = useState(100); // meters
+
+  const user = useAuth();
+  const userId = user?.uid;
+
+  useEffect(() => {
+    if (!user || !user.officeId) {
+      console.error("User or user.officeId is not defined");
+      return;
+    }
+
+    const findOfficeQuery = query(collection(db, 'offices'), where('uniqueId', '==', user.officeId), limit(1));
+    const unsubscribe = onSnapshot(findOfficeQuery, (querySnapshot) => {
+      const office = querySnapshot.docs[0]?.data();
+      if (office) {
+        setOfficeLocation({ lat: office.lat, lon: office.lng });
+        setCheckinDistance(office.checkinDistance);
+      }
+    });
+
+    console.log("Office Location: ", officeLocation);
+    console.log("Checkin Distance: ", checkinDistance);
+    return () => unsubscribe();
+  }, [user]);
 
   const getCurrentDateStr = () => new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
 
@@ -66,7 +89,7 @@ export const useLocationTracker = () => {
         });
       }
     }
-  }, []);
+  }, [userId]);
 
   const calculateEffectiveTime = useCallback((logs) => {
     let totalMinutes = 0;
@@ -105,7 +128,7 @@ export const useLocationTracker = () => {
       timestamp: serverTimestamp(),
       coordinates: {
         lat: userLocation.lat,
-      lng: userLocation.lon
+        lon: userLocation.lon
       },
       device: navigator.userAgent,
       network: navigator.connection?.effectiveType || 'Unknown'
@@ -113,7 +136,7 @@ export const useLocationTracker = () => {
 
     // Update daily record
     await updateDailyRecord(status);
-  }, [updateDailyRecord]);
+  }, [updateDailyRecord, userId]);
 
   const checkLocation = useCallback(() => {
     getUserLocation()
@@ -124,7 +147,7 @@ export const useLocationTracker = () => {
           officeLocation.lat,
           officeLocation.lon
         );
-
+console.log("userLocation", userLocation);  
         const logsRef = ref(rtdb, `logs/${userId}/${getCurrentDateStr()}`);
         const snapshot = await get(logsRef);
         const logsData = snapshot.exists() ? Object.values(snapshot.val()) : [];
@@ -153,7 +176,7 @@ export const useLocationTracker = () => {
       .catch((error) => {
         console.error("Error getting location: ", error);
       });
-  }, [writeLog, calculateEffectiveTime]);
+  }, [writeLog, calculateEffectiveTime, officeLocation, checkinDistance, userId]);
 
   useEffect(() => {
     checkLocation();
@@ -171,7 +194,9 @@ export const useLocationTracker = () => {
     });
 
     return () => unsubscribe();
-  }, [calculateEffectiveTime]);
+  }, [calculateEffectiveTime, userId]);
 
   return { status, distance, logs, effectiveTime, isCheckedIn };
 };
+
+export default useLocationTracker;

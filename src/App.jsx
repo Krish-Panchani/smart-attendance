@@ -2,12 +2,10 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
-import TrackLocation from './Testing_Comp/TrackLocation';
 import AboutPage from './pages/AboutPage';
 import NotFoundPage from './pages/NotFoundPage';
 import LocationTracker from './pages/LocationTracker';
 import Admin from './pages/Admin';
-import AddEmploee from './components/Admin/AddEmployee';
 import { Navigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import useAuth from './hooks/useAuth';
@@ -39,11 +37,9 @@ const App = () => {
       <Navbar />
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/track-location" element={<TrackLocation />} />
         <Route path="/location" element={<LocationTracker />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/admin" element={<Admin />} />
-        <Route path="/add-employee" element={<AddEmploee />} />
         <Route path="*" element={<NotFoundPage />} />
       
       </Routes>

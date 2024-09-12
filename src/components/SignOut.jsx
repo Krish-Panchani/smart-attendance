@@ -1,5 +1,5 @@
 // import React from 'react';
-import { auth } from '../../firebase';
+import { auth } from '../firebase';
 import { MdLogout } from "react-icons/md";
 
 const SignOut = () => {

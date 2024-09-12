@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Login from '../components/Login';
 import useAuth from '../hooks/useAuth';
-import SignOut from '../components/Admin/SignOut';
+import SignOut from '../components/SignOut';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase'; 
 import AddOffice from '../components/Admin/AddOffice';

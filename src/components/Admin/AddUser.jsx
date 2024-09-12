@@ -8,6 +8,7 @@ const AddUser = ({ user }) => {
   const [role, setRole] = useState('EMPLOYEE');
   const [offices, setOffices] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [errorMessage, setErrorMessage] = useState(''); // State to store error messages
 
   useEffect(() => {
     const findOfficeQuery = query(collection(db, 'offices'), where('admin', '==', user.email), limit(1));
@@ -34,47 +35,85 @@ const AddUser = ({ user }) => {
   }, [offices]);
 
   const handleAddEmployee = async () => {
-    const findUserQuery = query(collection(db, 'users'), where('userCode', '==', employeecode));
-    const getUser = await getDocs(findUserQuery);
+    try {
+      setErrorMessage(''); // Reset error message
 
-    if (!getUser.empty) {
-      console.log('User Found:', getUser.docs[0].data());
+      // Query to check if user already exists
+      const findUserQuery = query(collection(db, 'users'), where('userCode', '==', employeecode));
+      const getUser = await getDocs(findUserQuery);
 
-      const userDoc = getUser.docs[0];
-      const usercRef = doc(db, 'users', userDoc.id);
-      await updateDoc(usercRef, {
-        officeId: offices.length > 0 ? offices[0].uniqueId : 'N/A',
-        role: role,
-      });
-    } else {
-      console.log('User not found');
+      if (!getUser.empty) {
+        // If user is found, display error message
+        setErrorMessage('User already exists!');
+      } else {
+        // If user not found, proceed with adding the employee
+        const userDoc = getUser.docs[0];
+        const userRef = doc(db, 'users', userDoc.id);
+        await updateDoc(userRef, {
+          officeId: offices.length > 0 ? offices[0].uniqueId : 'N/A',
+          role: role,
+        });
+
+        alert('Employee added successfully!');
+        setEmployeecode('');
+        setRole('EMPLOYEE');
+      }
+    } catch (error) {
+      console.error('Error adding user:', error);
+      setErrorMessage('An error occurred while adding the user.');
     }
   };
 
   return (
-    <div>
-      <h2>Add User</h2>
-      <form onSubmit={(e) => { e.preventDefault(); handleAddEmployee(); }}>
+    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg mt-8">
+      <h2 className="text-2xl font-bold mb-4 text-gray-800">Add Employee</h2>
+      
+      {errorMessage && (
+        <p className="text-red-500 mb-4">{errorMessage}</p> // Display error message
+      )}
+
+      <form 
+        onSubmit={(e) => { e.preventDefault(); handleAddEmployee(); }}
+        className="space-y-4"
+      >
         <input
           type="text"
           placeholder="Add employee Code"
           value={employeecode}
           onChange={(e) => setEmployeecode(e.target.value)}
           required
+          className="w-full px-4 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-indigo-500"
         />
-        <select onChange={(e) => setRole(e.target.value)} value={role}>
+
+        <select 
+          onChange={(e) => setRole(e.target.value)} 
+          value={role}
+          className="w-full px-4 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-indigo-500"
+        >
           <option value="EMPLOYEE">Employee</option>
           <option value="HR">HR</option>
         </select>
-        <button type="submit">Add User</button>
+        
+        <button 
+          type="submit"
+          className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 w-full"
+        >
+          Add User
+        </button>
       </form>
 
-      <h2>
-        Your Employees
-      </h2>
-      <ul>
+      <h2 className="text-2xl font-bold mt-8 mb-4 text-gray-800">Your Employees</h2>
+      <ul className="space-y-4">
         {employees.map((employee) => (
-          <li key={employee.id}>{employee.displayName} - {employee.email}</li>
+          <li 
+            key={employee.id} 
+            className="p-4 bg-gray-100 rounded-lg shadow-md flex justify-between items-center"
+          >
+            <div>
+              <p className="text-lg font-semibold text-gray-700">{employee.displayName}</p>
+              <p className="text-sm text-gray-600">{employee.email}</p>
+            </div>
+          </li>
         ))}
       </ul>
     </div>

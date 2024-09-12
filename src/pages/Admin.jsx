@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import Login from '../components/Login';
 import useAuth from '../hooks/useAuth';
-import SignOut from '../components/SignOut';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase'; 
 import AddOffice from '../components/Admin/AddOffice';
@@ -31,13 +30,6 @@ export default function Admin() {
     <div>
       {isAdmin ? (
           <>
-            <div className='flex items-center justify-between p-6'>
-              <div className='flex items-center gap-4'>
-                <img src={user.photoURL} alt="Profile" className='rounded-full w-10' />
-                <p><span className='font-semibold'>{user.displayName}</span></p>
-              </div>
-              <SignOut />
-            </div>
             <AddOffice user={user} />
             <AddUser user={user} />
           </>

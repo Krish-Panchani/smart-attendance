@@ -63,6 +63,7 @@ const useLocationTracker = () => {
         if (!snapshot.exists()) {
           await set(dailyRecordRef, {
             employeeId: userId,
+            employeeEmail: user?.email,
             checkIn: serverTimestamp(),
             lastCheckOut: null,
             totalWorkingHours: 0,
@@ -83,7 +84,7 @@ const useLocationTracker = () => {
         });
       }
     },
-    [userId, getCurrentDateStr]
+    [userId, getCurrentDateStr, user]
   );
 
   const calculateEffectiveTime = useCallback(
@@ -128,6 +129,7 @@ const useLocationTracker = () => {
         await set(newLogRef, {
           userId,
           status,
+          user: user?.email,
           timestamp: serverTimestamp(),
           coordinates: userLocation,
           device: navigator.userAgent,
@@ -141,7 +143,7 @@ const useLocationTracker = () => {
         setIsProcessing(false); // Reset processing state
       }
     },
-    [updateDailyRecord, userId, getCurrentDateStr, getUserLocation, isProcessing]
+    [updateDailyRecord, userId, getCurrentDateStr, getUserLocation, isProcessing, user]
   );
 
   const checkLocation = useCallback(() => {

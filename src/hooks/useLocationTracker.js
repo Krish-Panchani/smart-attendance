@@ -220,7 +220,7 @@ const useLocationTracker = () => {
   useEffect(() => {
     if (officeData && userId) {
       checkLocation();
-      const intervalId = setInterval(checkLocation, 10000);
+      const intervalId = setInterval(checkLocation, 6000);
       return () => clearInterval(intervalId);
     }
   }, [checkLocation, officeData, userId]);

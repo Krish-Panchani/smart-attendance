@@ -7,12 +7,11 @@ const AddOffice = ({ user }) => {
     const [latitude, setLatitude] = useState(0);
     const [longitude, setLongitude] = useState(0);
     const [officeName, setOfficeName] = useState('');
+    const [checkinDistance, setCheckinDistance] = useState(0); // Add state for checkinDistance
     const [offices, setOffices] = useState([]);
-    const [editingOffice, setEditingOffice] = useState(null); // State to handle editing office
-    const [userOfficeExists, setUserOfficeExists] = useState(false); // Track if user has an office
-    const [showForm, setShowForm] = useState(false); // Control form visibility
-
-    console.log("user", user);
+    const [editingOffice, setEditingOffice] = useState(null);
+    const [userOfficeExists, setUserOfficeExists] = useState(false);
+    const [showForm, setShowForm] = useState(false);
 
     useEffect(() => {
         const q = query(collection(db, "offices"));
@@ -22,17 +21,12 @@ const AddOffice = ({ user }) => {
                 allOffices.push({ ...doc.data(), id: doc.id });
             });
             
-            // Filter offices to show only the one created by the current admin
             const adminOffices = allOffices.filter(office => office.admin === user.email);
             setOffices(adminOffices);
-
-            // Check if the current admin has an office
             setUserOfficeExists(adminOffices.length > 0);
         });
         return unsubscribe;
     }, [user.email]);
-
-    console.log(offices);
 
     const handleSetCurrentLocation = () => {
         navigator.geolocation.getCurrentPosition(
@@ -57,6 +51,10 @@ const AddOffice = ({ user }) => {
         setLongitude(parseFloat(e.target.value));
     };
 
+    const handleCheckinDistance = (e) => {
+        setCheckinDistance(parseFloat(e.target.value)); // Update checkinDistance state
+    };
+
     const handleSubmit = async () => {
         try {
             if (userOfficeExists && !editingOffice) {
@@ -65,22 +63,22 @@ const AddOffice = ({ user }) => {
             }
 
             if (editingOffice) {
-                // If editing, update the existing office
                 const officeRef = doc(db, 'offices', editingOffice.id);
                 await updateDoc(officeRef, {
                     name: officeName,
                     lat: latitude,
                     lng: longitude,
+                    checkinDistance, // Include checkinDistance in update
                 });
                 alert('Office updated successfully!');
             } else {
-                // If not editing, add a new office
                 const randomId = () => Math.random().toString(36).substr(2, 4);
                 await addDoc(collection(db, 'offices'), {
                     uniqueId: officeName.replace(/\s+/g, '-').toLowerCase() + '-' + randomId(),
                     name: officeName,
                     lat: latitude,
                     lng: longitude,
+                    checkinDistance, // Include checkinDistance in addition
                     createdOn: Timestamp.now(),
                     createdBy: user.uid,
                     admin: user.email,
@@ -88,9 +86,8 @@ const AddOffice = ({ user }) => {
                 alert('Office added successfully!');
             }
 
-            // Reset form and state
             resetForm();
-            setShowForm(false); // Hide form after submission
+            setShowForm(false);
         } catch (error) {
             console.error('Error adding/updating office:', error);
         }
@@ -100,24 +97,26 @@ const AddOffice = ({ user }) => {
         setOfficeName('');
         setLatitude(0);
         setLongitude(0);
+        setCheckinDistance(0); // Reset checkinDistance
         setEditingOffice(null);
     };
 
     const handleEditOffice = (office) => {
-        setEditingOffice(office); // Set the office to be edited
+        setEditingOffice(office);
         setOfficeName(office.name);
         setLatitude(office.lat);
         setLongitude(office.lng);
-        setShowForm(true); // Show the form for editing
+        setCheckinDistance(office.checkinDistance || 0); // Set checkinDistance for editing
+        setShowForm(true);
     };
 
     const handleAddOfficeClick = () => {
-        setShowForm(true); // Show the form for adding a new office
+        setShowForm(true);
     };
 
     const handleCancel = () => {
         resetForm();
-        setShowForm(false); // Hide form on cancel
+        setShowForm(false);
     };
 
     AddOffice.propTypes = {
@@ -164,6 +163,13 @@ const AddOffice = ({ user }) => {
                             onChange={handleLng}
                             className="w-full px-4 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-indigo-500"
                         />
+                        <input
+                            type="number"
+                            placeholder="Check-in Distance"
+                            value={checkinDistance}
+                            onChange={handleCheckinDistance} // Add handler for checkinDistance
+                            className="w-full px-4 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-indigo-500"
+                        />
                         <div className="flex flex-wrap space-x-4 mt-4">
                             <button
                                 onClick={handleSetCurrentLocation}
@@ -205,6 +211,7 @@ const AddOffice = ({ user }) => {
                                     <p className="text-lg font-semibold text-gray-700">{office.name}</p>
                                     <p className="text-sm text-gray-600">Latitude: {office.lat}</p>
                                     <p className="text-sm text-gray-600">Longitude: {office.lng}</p>
+                                    <p className="text-sm text-gray-600">Check-in Distance: {office.checkinDistance || 'N/A'}</p> {/* Display checkinDistance */}
                                 </div>
                                 <div className="flex space-x-2 mt-2 sm:mt-0">
                                     <button

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion'; // Import framer-motion
 import { doc, updateDoc, collection, where, query, onSnapshot, getDocs, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
 import PropTypes from 'prop-types';
@@ -9,9 +10,9 @@ const AddUser = ({ user }) => {
   const [role, setRole] = useState('EMPLOYEE');
   const [office, setOffice] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [loading, setLoading] = useState(true); // Track loading state
 
   const employeesDetails = useEmployeeDetails(office?.uniqueId);
-  console.log(employeesDetails);
 
   useEffect(() => {
     const findOfficeQuery = query(collection(db, 'offices'), where('admin', '==', user.email), limit(1));
@@ -24,6 +25,9 @@ const AddUser = ({ user }) => {
         setOffice(null);
       }
     });
+
+    // Simulate data loading delay
+    setTimeout(() => setLoading(false), 2000);
 
     return () => unsubscribe();
   }, [user.email]);
@@ -54,6 +58,24 @@ const AddUser = ({ user }) => {
     }
   };
 
+  // Skeleton component for loading state
+  const EmployeeSkeleton = () => (
+    <motion.div
+      className="p-6 bg-gray-100 rounded-lg shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center border border-gray-200"
+      animate={{ opacity: [0.6, 1] }}
+      transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
+    >
+      <div className="w-16 h-16 bg-gray-300 rounded-full animate-pulse"></div>
+      <div className="mt-4 sm:mt-0 sm:ml-6 flex-grow">
+        <div className="w-32 h-5 bg-gray-300 rounded-lg mb-2 animate-pulse"></div>
+        <div className="w-24 h-4 bg-gray-300 rounded-lg mb-2 animate-pulse"></div>
+        <div className="w-36 h-4 bg-gray-300 rounded-lg mb-2 animate-pulse"></div>
+        <div className="w-32 h-4 bg-gray-300 rounded-lg mb-2 animate-pulse"></div>
+        <div className="w-40 h-4 bg-gray-300 rounded-lg animate-pulse"></div>
+      </div>
+    </motion.div>
+  );
+
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg mt-8">
       <h2 className="text-2xl font-bold mb-4 text-gray-800">Add Employee</h2>
@@ -81,28 +103,41 @@ const AddUser = ({ user }) => {
       </form>
 
       <h2 className="text-3xl font-extrabold mt-10 mb-6 text-gray-900">Employee Directory</h2>
-<ul className="space-y-6">
-  {employeesDetails.map((employee) => (
-    <li key={employee.id} className="p-6 bg-white rounded-lg shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center border border-gray-200 hover:border-gray-300 transition-all">
-      <div className="flex-shrink-0">
-        <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 text-2xl font-semibold">
-          {employee.displayName.charAt(0)}
-        </div>
-      </div>
-      <div className="mt-4 sm:mt-0 sm:ml-6 flex-grow">
-        <p className="text-xl font-bold text-gray-800">{employee.displayName}</p>
-        <p className="text-sm text-gray-600">{employee.email}</p>
-        <p className="text-sm text-gray-600">Check In: {employee.checkIn}</p>
-        <p className="text-sm text-gray-600">Last Check Out: {employee.lastCheckOut}</p>
-        <p className="text-sm text-gray-600">Effective Time: {employee.totalWorkingHours} minutes</p>
-      </div>
-      <button className="mt-4 sm:mt-0 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-all">
-        View Details
-      </button>
-    </li>
-  ))}
-</ul>
 
+      <ul className="space-y-6">
+        {loading ? (
+          // Display skeleton loaders while data is loading
+          <>
+            <EmployeeSkeleton />
+            <EmployeeSkeleton />
+            <EmployeeSkeleton />
+          </>
+        ) : (
+          // Show employee data once loaded
+          employeesDetails.map((employee) => (
+            <li
+              key={employee.id}
+              className="p-6 bg-white rounded-lg shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center border border-gray-200 hover:border-gray-300 transition-all"
+            >
+              <div className="flex-shrink-0">
+                <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 text-2xl font-semibold">
+                  {employee.displayName.charAt(0)}
+                </div>
+              </div>
+              <div className="mt-4 sm:mt-0 sm:ml-6 flex-grow">
+                <p className="text-xl font-bold text-gray-800">{employee.displayName}</p>
+                <p className="text-sm text-gray-600">{employee.email}</p>
+                <p className="text-sm text-gray-600">Check In: {employee.checkIn}</p>
+                <p className="text-sm text-gray-600">Last Check Out: {employee.lastCheckOut}</p>
+                <p className="text-sm text-gray-600">Effective Time: {employee.totalWorkingHours} minutes</p>
+              </div>
+              <button className="mt-4 sm:mt-0 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-all">
+                View Details
+              </button>
+            </li>
+          ))
+        )}
+      </ul>
     </div>
   );
 };

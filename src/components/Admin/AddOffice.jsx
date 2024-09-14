@@ -13,21 +13,24 @@ const AddOffice = ({ user }) => {
     const [showForm, setShowForm] = useState(false); // Control form visibility
 
     console.log("user", user);
+
     useEffect(() => {
         const q = query(collection(db, "offices"));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const offices = [];
+            const allOffices = [];
             querySnapshot.forEach((doc) => {
-                offices.push({ ...doc.data(), id: doc.id });
+                allOffices.push({ ...doc.data(), id: doc.id });
             });
-            setOffices(offices);
+            
+            // Filter offices to show only the one created by the current admin
+            const adminOffices = allOffices.filter(office => office.admin === user.email);
+            setOffices(adminOffices);
 
-            // Check if user already has an office
-            const userHasOffice = offices.some(office => office.createdBy === user.uid);
-            setUserOfficeExists(userHasOffice);
+            // Check if the current admin has an office
+            setUserOfficeExists(adminOffices.length > 0);
         });
         return unsubscribe;
-    }, [user.uid]);
+    }, [user.email]);
 
     console.log(offices);
 
@@ -188,38 +191,40 @@ const AddOffice = ({ user }) => {
                 </div>
             )}
 
-            <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg mt-8">
-                <h1 className="text-2xl font-bold mb-4 text-gray-800">Offices</h1>
-                <ul className="space-y-4">
-                    {offices.map((office) => (
-                        <li
-                            key={office.id}
-                            className="p-4 bg-gray-100 rounded-lg shadow-md flex justify-between items-center flex-wrap"
-                        >
-                            <div className="w-full sm:w-auto">
-                                <p className="text-sm font-medium text-gray-500">ID: {office.uniqueId}</p>
-                                <p className="text-lg font-semibold text-gray-700">{office.name}</p>
-                                <p className="text-sm text-gray-600">Latitude: {office.lat}</p>
-                                <p className="text-sm text-gray-600">Longitude: {office.lng}</p>
-                            </div>
-                            <div className="flex space-x-2 mt-2 sm:mt-0">
-                                <button
-                                    onClick={() => handleEditOffice(office)}
-                                    className="bg-yellow-400 text-white px-2 py-1 rounded-md hover:bg-yellow-500"
-                                >
-                                    Edit Office
-                                </button>
-                                <button
-                                    onClick={handleAddEmployee}
-                                    className="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600"
-                                >
-                                    Add Employee
-                                </button>
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            </div>
+            {offices.length > 0 && (
+                <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg mt-8">
+                    <h1 className="text-2xl font-bold mb-4 text-gray-800">Your Office</h1>
+                    <ul className="space-y-4">
+                        {offices.map((office) => (
+                            <li
+                                key={office.id}
+                                className="p-4 bg-gray-100 rounded-lg shadow-md flex justify-between items-center flex-wrap"
+                            >
+                                <div className="w-full sm:w-auto">
+                                    <p className="text-sm font-medium text-gray-500">ID: {office.uniqueId}</p>
+                                    <p className="text-lg font-semibold text-gray-700">{office.name}</p>
+                                    <p className="text-sm text-gray-600">Latitude: {office.lat}</p>
+                                    <p className="text-sm text-gray-600">Longitude: {office.lng}</p>
+                                </div>
+                                <div className="flex space-x-2 mt-2 sm:mt-0">
+                                    <button
+                                        onClick={() => handleEditOffice(office)}
+                                        className="bg-yellow-400 text-white px-2 py-1 rounded-md hover:bg-yellow-500"
+                                    >
+                                        Edit Office
+                                    </button>
+                                    <button
+                                        onClick={handleAddEmployee}
+                                        className="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600"
+                                    >
+                                        Add Employee
+                                    </button>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
         </>
     );
 }

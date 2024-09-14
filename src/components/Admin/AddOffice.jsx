@@ -2,16 +2,18 @@ import { useEffect, useState } from "react";
 import { collection, addDoc, updateDoc, doc, Timestamp, query, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import PropTypes from 'prop-types';
+import { motion } from 'framer-motion';
 
 const AddOffice = ({ user }) => {
     const [latitude, setLatitude] = useState(0);
     const [longitude, setLongitude] = useState(0);
     const [officeName, setOfficeName] = useState('');
-    const [checkinDistance, setCheckinDistance] = useState(0); // Add state for checkinDistance
+    const [checkinDistance, setCheckinDistance] = useState(0);
     const [offices, setOffices] = useState([]);
     const [editingOffice, setEditingOffice] = useState(null);
     const [userOfficeExists, setUserOfficeExists] = useState(false);
     const [showForm, setShowForm] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const q = query(collection(db, "offices"));
@@ -24,6 +26,7 @@ const AddOffice = ({ user }) => {
             const adminOffices = allOffices.filter(office => office.admin === user.email);
             setOffices(adminOffices);
             setUserOfficeExists(adminOffices.length > 0);
+            setLoading(false);
         });
         return unsubscribe;
     }, [user.email]);
@@ -39,22 +42,6 @@ const AddOffice = ({ user }) => {
         );
     };
 
-    const handleOfficeName = (e) => {
-        setOfficeName(e.target.value);
-    };
-
-    const handleLat = (e) => {
-        setLatitude(parseFloat(e.target.value));
-    };
-
-    const handleLng = (e) => {
-        setLongitude(parseFloat(e.target.value));
-    };
-
-    const handleCheckinDistance = (e) => {
-        setCheckinDistance(parseFloat(e.target.value)); // Update checkinDistance state
-    };
-
     const handleSubmit = async () => {
         try {
             if (userOfficeExists && !editingOffice) {
@@ -68,7 +55,7 @@ const AddOffice = ({ user }) => {
                     name: officeName,
                     lat: latitude,
                     lng: longitude,
-                    checkinDistance, // Include checkinDistance in update
+                    checkinDistance,
                 });
                 alert('Office updated successfully!');
             } else {
@@ -78,7 +65,7 @@ const AddOffice = ({ user }) => {
                     name: officeName,
                     lat: latitude,
                     lng: longitude,
-                    checkinDistance, // Include checkinDistance in addition
+                    checkinDistance,
                     createdOn: Timestamp.now(),
                     createdBy: user.uid,
                     admin: user.email,
@@ -97,7 +84,7 @@ const AddOffice = ({ user }) => {
         setOfficeName('');
         setLatitude(0);
         setLongitude(0);
-        setCheckinDistance(0); // Reset checkinDistance
+        setCheckinDistance(0);
         setEditingOffice(null);
     };
 
@@ -106,7 +93,7 @@ const AddOffice = ({ user }) => {
         setOfficeName(office.name);
         setLatitude(office.lat);
         setLongitude(office.lng);
-        setCheckinDistance(office.checkinDistance || 0); // Set checkinDistance for editing
+        setCheckinDistance(office.checkinDistance || 0);
         setShowForm(true);
     };
 
@@ -123,63 +110,64 @@ const AddOffice = ({ user }) => {
         user: PropTypes.object.isRequired,
     };
 
-    const handleAddEmployee = () => {
-        console.log("Add Employee");
-    };
-
     return (
         <>
             {!showForm && !userOfficeExists && (
                 <button
                     onClick={handleAddOfficeClick}
-                    className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 mt-8 mx-auto block"
+                    className="bg-green-500 text-white px-6 py-3 rounded-md hover:bg-green-600 mt-8 mx-auto block shadow-md transition-transform transform hover:scale-105"
                 >
                     Add Office
                 </button>
             )}
 
             {(showForm || editingOffice) && (
-                <div className="max-w-lg mx-auto p-6 bg-white rounded-lg shadow-lg mt-8">
+                <motion.div
+                    className="max-w-lg mx-auto p-8 bg-white rounded-lg shadow-lg mt-8"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                >
                     <h1 className="text-2xl font-bold mb-4 text-gray-800">{editingOffice ? 'Edit Office' : 'Add Office'}</h1>
                     <div className="space-y-4">
                         <input
                             type="text"
                             placeholder="Office Name"
                             value={officeName}
-                            onChange={handleOfficeName}
+                            onChange={(e) => setOfficeName(e.target.value)}
                             className="w-full px-4 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-indigo-500"
                         />
                         <input
                             type="number"
                             placeholder="Latitude"
                             value={latitude}
-                            onChange={handleLat}
+                            onChange={(e) => setLatitude(parseFloat(e.target.value))}
                             className="w-full px-4 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-indigo-500"
                         />
                         <input
                             type="number"
                             placeholder="Longitude"
                             value={longitude}
-                            onChange={handleLng}
+                            onChange={(e) => setLongitude(parseFloat(e.target.value))}
                             className="w-full px-4 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-indigo-500"
                         />
                         <input
                             type="number"
-                            placeholder="Check-in Distance"
+                            placeholder="Check-in Distance (meters)"
                             value={checkinDistance}
-                            onChange={handleCheckinDistance} // Add handler for checkinDistance
+                            onChange={(e) => setCheckinDistance(parseFloat(e.target.value))}
                             className="w-full px-4 py-2 border rounded-md text-gray-700 focus:outline-none focus:border-indigo-500"
                         />
                         <div className="flex flex-wrap space-x-4 mt-4">
                             <button
                                 onClick={handleSetCurrentLocation}
-                                className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 w-full sm:w-auto"
+                                className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-all w-full sm:w-auto"
                             >
                                 Set Current Location
                             </button>
                             <button
                                 onClick={handleSubmit}
-                                className={`bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 w-full sm:w-auto ${userOfficeExists && !editingOffice ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-all w-full sm:w-auto ${userOfficeExists && !editingOffice ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 disabled={userOfficeExists && !editingOffice}
                             >
                                 {editingOffice ? 'Update Office' : 'Add Office'}
@@ -187,50 +175,69 @@ const AddOffice = ({ user }) => {
                             {editingOffice && (
                                 <button
                                     onClick={handleCancel}
-                                    className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 w-full sm:w-auto"
+                                    className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-all w-full sm:w-auto"
                                 >
                                     Cancel
                                 </button>
                             )}
                         </div>
                     </div>
-                </div>
+                </motion.div>
             )}
 
-            {offices.length > 0 && (
+            {loading ? (
                 <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg mt-8">
-                    <h1 className="text-2xl font-bold mb-4 text-gray-800">Your Office</h1>
-                    <ul className="space-y-4">
-                        {offices.map((office) => (
-                            <li
-                                key={office.id}
-                                className="p-4 bg-gray-100 rounded-lg shadow-md flex justify-between items-center flex-wrap"
+                    <h1 className="text-2xl font-bold mb-4 text-gray-800">Loading Your Office...</h1>
+                    <div className="space-y-4">
+                        {[1, 2, 3].map((index) => (
+                            <motion.div
+                                key={index}
+                                className="p-6 bg-gray-100 rounded-lg shadow-md animate-pulse"
+                                initial={{ opacity: 0.6 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
                             >
-                                <div className="w-full sm:w-auto">
-                                    <p className="text-sm font-medium text-gray-500">ID: {office.uniqueId}</p>
-                                    <p className="text-lg font-semibold text-gray-700">{office.name}</p>
-                                    <p className="text-sm text-gray-600">Latitude: {office.lat}</p>
-                                    <p className="text-sm text-gray-600">Longitude: {office.lng}</p>
-                                    <p className="text-sm text-gray-600">Check-in Distance: {office.checkinDistance || 'N/A'}</p> {/* Display checkinDistance */}
-                                </div>
-                                <div className="flex space-x-2 mt-2 sm:mt-0">
-                                    <button
-                                        onClick={() => handleEditOffice(office)}
-                                        className="bg-yellow-400 text-white px-2 py-1 rounded-md hover:bg-yellow-500"
-                                    >
-                                        Edit Office
-                                    </button>
-                                    <button
-                                        onClick={handleAddEmployee}
-                                        className="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600"
-                                    >
-                                        Add Employee
-                                    </button>
-                                </div>
-                            </li>
+                                <div className="w-24 h-5 bg-gray-300 rounded-lg mb-4"></div>
+                                <div className="w-32 h-4 bg-gray-300 rounded-lg mb-2"></div>
+                                <div className="w-36 h-4 bg-gray-300 rounded-lg mb-2"></div>
+                            </motion.div>
                         ))}
-                    </ul>
+                    </div>
                 </div>
+            ) : (
+                offices.length > 0 && (
+                    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg mt-8">
+                        <h1 className="text-2xl font-bold mb-4 text-gray-800">Your Offices</h1>
+                        <ul className="space-y-4">
+                            {offices.map((office) => (
+                                <li
+                                    key={office.id}
+                                    className="p-6 bg-gray-100 rounded-lg shadow-md flex flex-col sm:flex-row justify-between items-start sm:items-center border border-gray-200 hover:border-gray-300 transition-all"
+                                >
+                                    <div className="flex-shrink-0">
+                                        <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center text-gray-500 text-2xl font-semibold">
+                                            {office.name.charAt(0)}
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 sm:mt-0 sm:ml-6 flex-grow">
+                                        <p className="text-lg font-bold text-gray-800">{office.name}</p>
+                                        <p className="text-sm text-gray-600">Latitude: {office.lat}</p>
+                                        <p className="text-sm text-gray-600">Longitude: {office.lng}</p>
+                                        <p className="text-sm text-gray-600">Check-in Distance: {office.checkinDistance || 'N/A'} meters</p>
+                                    </div>
+                                    <div className="flex space-x-2 mt-4 sm:mt-0">
+                                        <button
+                                            onClick={() => handleEditOffice(office)}
+                                            className="bg-yellow-400 text-white px-4 py-2 rounded-md hover:bg-yellow-500 transition-all"
+                                        >
+                                            Edit Office
+                                        </button>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )
             )}
         </>
     );

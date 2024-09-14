@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ref, onValue, set, push, serverTimestamp, get, update } from 'firebase/database';
 import { rtdb, db } from '../firebase';
 import { calculateDistance } from '../helpers/calculateDistance';
@@ -8,16 +8,14 @@ import { collection, query, where, limit, onSnapshot } from 'firebase/firestore'
 const useLocationTracker = () => {
   const [status, setStatus] = useState('Unknown');
   const [distance, setDistance] = useState(null);
-  const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [logs, setLogs] = useState([]);
   const [effectiveTime, setEffectiveTime] = useState(0);
-  const [officeLocation, setOfficeLocation] = useState(null);
-  const [checkinDistance, setCheckinDistance] = useState(null);
-  const [officeName, setOfficeName] = useState(null); // New state for office name
-  const [isProcessing, setIsProcessing] = useState(false); // Prevent multiple log writing  
+  const [officeData, setOfficeData] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
+  const [loading, setLoading] = useState(true); // Loading state for data fetching
 
-
+  const isCheckedInRef = useRef(false); // Track check-in status to avoid multiple entries
   const user = useAuth();
   const userId = user?.uid;
 
@@ -25,26 +23,25 @@ const useLocationTracker = () => {
 
   // Fetch office data
   useEffect(() => {
-    if (!user || !user.officeId) {
-      console.error("User or user.officeId is not defined");
-      return;
-    }
+    if (!user || !user.officeId) return;
 
     const findOfficeQuery = query(collection(db, 'offices'), where('uniqueId', '==', user.officeId), limit(1));
     const unsubscribe = onSnapshot(findOfficeQuery, (querySnapshot) => {
       const office = querySnapshot.docs[0]?.data();
       if (office) {
-        setOfficeLocation({ lat: office.lat, lon: office.lng });
-        setCheckinDistance(office.checkinDistance);
-        setOfficeName(office.name); // Set office name
+        setOfficeData({
+          location: { lat: office.lat, lon: office.lng },
+          checkinDistance: office.checkinDistance,
+          name: office.name
+        });
       } else {
         console.error("Office data not found");
-        setOfficeLocation(null);
-        setCheckinDistance(null);
-        setOfficeName(null); // Reset office name
+        setOfficeData(null);
       }
+      setLoading(false); // Stop loading after office data is fetched
     }, (error) => {
       console.error("Error fetching office data: ", error);
+      setLoading(false); // Stop loading even if there's an error
     });
 
     return () => unsubscribe();
@@ -52,18 +49,24 @@ const useLocationTracker = () => {
 
   // Get user location
   const getUserLocation = useCallback(() => {
+    setLoading(true); // Start loading when fetching location
     return new Promise((resolve, reject) => {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const location = { lat: position.coords.latitude, lon: position.coords.longitude };
-            setCurrentLocation(location); // Update state with current location
+            setCurrentLocation(location);
             resolve(location);
+            setLoading(false); // Stop loading after location is fetched
           },
-          (error) => reject(error)
+          (error) => {
+            reject(error);
+            setLoading(false); // Stop loading if there's an error
+          }
         );
       } else {
         reject(new Error("Geolocation is not supported by this browser."));
+        setLoading(false); // Stop loading if geolocation is not supported
       }
     });
   }, []);
@@ -122,7 +125,7 @@ const useLocationTracker = () => {
         }
       });
 
-      if (isCheckedIn && lastCheckin) {
+      if (isCheckedInRef.current && lastCheckin) {
         const now = new Date();
         const diff = now - lastCheckin;
         totalMinutes += Math.round(diff / 60000);
@@ -130,7 +133,7 @@ const useLocationTracker = () => {
 
       setEffectiveTime(totalMinutes);
     },
-    [isCheckedIn]
+    []
   );
 
   // Write log entry
@@ -148,8 +151,10 @@ const useLocationTracker = () => {
         const isCurrentlyCheckedIn = lastLog?.status === 'checkin';
 
         // Avoid writing duplicate log entries
-        if (status === 'checkin' && isCurrentlyCheckedIn) return;
-        if (status === 'checkout' && !isCurrentlyCheckedIn) return;
+        if ((status === 'checkin' && isCurrentlyCheckedIn) || (status === 'checkout' && !isCurrentlyCheckedIn)) {
+          setIsProcessing(false);
+          return;
+        }
 
         const newLogRef = push(logRef);
         const userLocation = await getUserLocation();
@@ -165,6 +170,7 @@ const useLocationTracker = () => {
         });
 
         await updateDailyRecord(status);
+        isCheckedInRef.current = status === 'checkin'; // Update check-in status
       } catch (error) {
         console.error("Error writing log: ", error);
       } finally {
@@ -176,30 +182,29 @@ const useLocationTracker = () => {
 
   // Check location and update status
   const checkLocation = useCallback(() => {
-    if (!officeLocation || !checkinDistance || !userId) return;
+    if (!officeData || !userId) return;
 
     getUserLocation()
       .then(async (userLocation) => {
-        const currentDistance = calculateDistance(userLocation.lat, userLocation.lon, officeLocation.lat, officeLocation.lon);
+        const { location, checkinDistance } = officeData;
+        const currentDistance = calculateDistance(userLocation.lat, userLocation.lon, location.lat, location.lon);
         const logsRef = ref(rtdb, `logs/${userId}/${getCurrentDateStr}`);
         const snapshot = await get(logsRef);
         const logsData = snapshot.exists() ? Object.values(snapshot.val()) : [];
         const lastLog = logsData[logsData.length - 1];
         const isCurrentlyCheckedIn = lastLog?.status === 'checkin';
 
-        console.log("userLocation", userLocation);
-
         if (currentDistance <= checkinDistance) {
           if (!isCurrentlyCheckedIn) {
             await writeLog('checkin');
-            setIsCheckedIn(true);
+            isCheckedInRef.current = true;
           }
           setStatus('Checked in');
           setDistance(`Within range: ${Math.round(currentDistance)} meters`);
         } else {
           if (isCurrentlyCheckedIn) {
             await writeLog('checkout');
-            setIsCheckedIn(false);
+            isCheckedInRef.current = false;
           }
           setStatus('Checked out');
           setDistance(`Distance from office: ${Math.round(currentDistance)} meters`);
@@ -209,16 +214,16 @@ const useLocationTracker = () => {
         calculateEffectiveTime(logsData);
       })
       .catch((error) => console.error("Error getting location: ", error));
-  }, [writeLog, calculateEffectiveTime, officeLocation, checkinDistance, userId, getCurrentDateStr, getUserLocation]);
+  }, [writeLog, calculateEffectiveTime, officeData, userId, getCurrentDateStr, getUserLocation]);
 
   // Set up location checking interval
   useEffect(() => {
-    if (officeLocation && checkinDistance && userId) {
+    if (officeData && userId) {
       checkLocation();
       const intervalId = setInterval(checkLocation, 10000);
       return () => clearInterval(intervalId);
     }
-  }, [checkLocation, officeLocation, checkinDistance, userId]);
+  }, [checkLocation, officeData, userId]);
 
   // Listen for real-time updates to logs
   useEffect(() => {
@@ -234,8 +239,7 @@ const useLocationTracker = () => {
     return () => unsubscribe();
   }, [calculateEffectiveTime, userId, getCurrentDateStr]);
 
-  console.log("ALL DATA", { status, distance, logs, effectiveTime, isCheckedIn, officeName });
-  return { status, distance, logs, effectiveTime, isCheckedIn, officeName, currentLocation }; // Return office name
+  return { status, distance, logs, effectiveTime, isCheckedIn: isCheckedInRef.current, officeName: officeData?.name, currentLocation, loading };
 };
 
 export default useLocationTracker;

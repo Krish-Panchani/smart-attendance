@@ -1,16 +1,20 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion'; // Import framer-motion
+// import { motion } from 'framer-motion';
 import { doc, updateDoc, collection, where, query, onSnapshot, getDocs, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
 import PropTypes from 'prop-types';
 import useEmployeeDetails from '../../hooks/useEmployeeDetails'; // Adjust path as necessary
+import useTodayLogs from '../../hooks/useTodayLogs'; // Import the new hook for logs
+import TodayLogs from './TodayLogs'; // Import the logs component
 
 const AddUser = ({ user }) => {
   const [employeecode, setEmployeecode] = useState('');
   const [role, setRole] = useState('EMPLOYEE');
   const [office, setOffice] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
-  const [loading, setLoading] = useState(true); // Track loading state
+  const [loading, setLoading] = useState(true);
+  const [selectedEmployee, setSelectedEmployee] = useState(null); // Track the selected employee for logs
+  const [isModalOpen, setIsModalOpen] = useState(false); // Modal state
 
   const employeesDetails = useEmployeeDetails(office?.uniqueId);
 
@@ -26,7 +30,6 @@ const AddUser = ({ user }) => {
       }
     });
 
-    // Simulate data loading delay
     setTimeout(() => setLoading(false), 2000);
 
     return () => unsubscribe();
@@ -58,23 +61,11 @@ const AddUser = ({ user }) => {
     }
   };
 
-  // Skeleton component for loading state
-  const EmployeeSkeleton = () => (
-    <motion.div
-      className="p-6 bg-gray-100 rounded-lg shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center border border-gray-200"
-      animate={{ opacity: [0.6, 1] }}
-      transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
-    >
-      <div className="w-16 h-16 bg-gray-300 rounded-full animate-pulse"></div>
-      <div className="mt-4 sm:mt-0 sm:ml-6 flex-grow">
-        <div className="w-32 h-5 bg-gray-300 rounded-lg mb-2 animate-pulse"></div>
-        <div className="w-24 h-4 bg-gray-300 rounded-lg mb-2 animate-pulse"></div>
-        <div className="w-36 h-4 bg-gray-300 rounded-lg mb-2 animate-pulse"></div>
-        <div className="w-32 h-4 bg-gray-300 rounded-lg mb-2 animate-pulse"></div>
-        <div className="w-40 h-4 bg-gray-300 rounded-lg animate-pulse"></div>
-      </div>
-    </motion.div>
-  );
+  // Handle opening the modal with logs
+  const handleViewDetails = (employee) => {
+    setSelectedEmployee(employee);
+    setIsModalOpen(true);
+  };
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg mt-8">
@@ -106,14 +97,10 @@ const AddUser = ({ user }) => {
 
       <ul className="space-y-6">
         {loading ? (
-          // Display skeleton loaders while data is loading
           <>
-            <EmployeeSkeleton />
-            <EmployeeSkeleton />
-            <EmployeeSkeleton />
+            {/* Skeleton for loading */}
           </>
         ) : (
-          // Show employee data once loaded
           employeesDetails.map((employee) => (
             <li
               key={employee.id}
@@ -131,13 +118,42 @@ const AddUser = ({ user }) => {
                 <p className="text-sm text-gray-600">Last Check Out: {employee.lastCheckOut}</p>
                 <p className="text-sm text-gray-600">Effective Time: {employee.totalWorkingHours} minutes</p>
               </div>
-              <button className="mt-4 sm:mt-0 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-all">
+              <button
+                className="mt-4 sm:mt-0 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-all"
+                onClick={() => handleViewDetails(employee)}
+              >
                 View Details
               </button>
             </li>
           ))
         )}
       </ul>
+
+      {/* Modal to show employee logs */}
+      {isModalOpen && (
+        <LogsModal employee={selectedEmployee} closeModal={() => setIsModalOpen(false)} />
+      )}
+    </div>
+  );
+};
+
+// Modal component
+const LogsModal = ({ employee, closeModal }) => {
+  const { logs, isLoading } = useTodayLogs(employee.id);
+  console.log(logs);
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-8 rounded-lg shadow-lg relative w-full max-w-2xl">
+        <button
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+          onClick={closeModal}
+        >
+          &times;
+        </button>
+        <h2 className="text-2xl font-bold mb-4">{employee.displayName}&apos;s Logs</h2>
+        <TodayLogs logs={logs} isLoading={isLoading} />
+      </div>
     </div>
   );
 };
@@ -149,6 +165,11 @@ AddUser.propTypes = {
     uid: PropTypes.string.isRequired,
     displayName: PropTypes.string.isRequired,
   }).isRequired,
+};
+
+LogsModal.propTypes = {
+  employee: PropTypes.object.isRequired,
+  closeModal: PropTypes.func.isRequired,
 };
 
 export default AddUser;

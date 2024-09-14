@@ -1,7 +1,6 @@
 import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
 import { FaCalendarDay } from 'react-icons/fa';
-import { ImSpinner2 } from 'react-icons/im';
 
 const SkeletonLoader = () => (
   <div className="bg-gray-100 p-6 rounded-lg shadow-md mb-6 animate-pulse">
@@ -64,7 +63,6 @@ const TodayLogs = ({ logs = [], isLoading = false }) => (
         {!logs.length && !isLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-gray-500">
-              <ImSpinner2 className="animate-spin text-4xl mb-2" />
               <p>No logs available</p>
             </div>
           </div>

@@ -13,13 +13,17 @@ const useLocationTracker = () => {
   const [effectiveTime, setEffectiveTime] = useState(0);
   const [officeLocation, setOfficeLocation] = useState(null);
   const [checkinDistance, setCheckinDistance] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false); // Prevent multiple log writing
+  const [officeName, setOfficeName] = useState(null); // New state for office name
+  const [isProcessing, setIsProcessing] = useState(false); // Prevent multiple log writing  
+  const [currentLocation, setCurrentLocation] = useState(null);
+
 
   const user = useAuth();
   const userId = user?.uid;
 
   const getCurrentDateStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
+  // Fetch office data
   useEffect(() => {
     if (!user || !user.officeId) {
       console.error("User or user.officeId is not defined");
@@ -32,23 +36,31 @@ const useLocationTracker = () => {
       if (office) {
         setOfficeLocation({ lat: office.lat, lon: office.lng });
         setCheckinDistance(office.checkinDistance);
+        setOfficeName(office.name); // Set office name
+      } else {
+        console.error("Office data not found");
+        setOfficeLocation(null);
+        setCheckinDistance(null);
+        setOfficeName(null); // Reset office name
       }
+    }, (error) => {
+      console.error("Error fetching office data: ", error);
     });
 
     return () => unsubscribe();
   }, [user]);
 
+  // Get user location
   const getUserLocation = useCallback(() => {
     return new Promise((resolve, reject) => {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-          (position) => resolve({ lat: position.coords.latitude, lon: position.coords.longitude }),
-          (error) => reject(error),
-          {
-            enableHighAccuracy: true, // Request high accuracy
-            timeout: 5000,            // Set timeout to 5 seconds
-            maximumAge: 10000         // Do not use location data older than 10 seconds
-          }
+          (position) => {
+            const location = { lat: position.coords.latitude, lon: position.coords.longitude };
+            setCurrentLocation(location); // Update state with current location
+            resolve(location);
+          },
+          (error) => reject(error)
         );
       } else {
         reject(new Error("Geolocation is not supported by this browser."));
@@ -56,6 +68,7 @@ const useLocationTracker = () => {
     });
   }, []);
 
+  // Update daily record
   const updateDailyRecord = useCallback(
     async (status) => {
       if (!userId) return;
@@ -92,6 +105,7 @@ const useLocationTracker = () => {
     [userId, getCurrentDateStr, user]
   );
 
+  // Calculate effective working time
   const calculateEffectiveTime = useCallback(
     (logs) => {
       let totalMinutes = 0;
@@ -119,16 +133,25 @@ const useLocationTracker = () => {
     [isCheckedIn]
   );
 
+  // Write log entry
   const writeLog = useCallback(
     async (status) => {
       if (!userId || isProcessing) return;
 
-      setIsProcessing(true); // Set processing to true to prevent duplicate logs
+      setIsProcessing(true);
       try {
         const todayDateStr = getCurrentDateStr;
         const logRef = ref(rtdb, `logs/${userId}/${todayDateStr}`);
-        const newLogRef = push(logRef);
+        const snapshot = await get(logRef);
+        const logsData = snapshot.exists() ? Object.values(snapshot.val()) : [];
+        const lastLog = logsData[logsData.length - 1];
+        const isCurrentlyCheckedIn = lastLog?.status === 'checkin';
 
+        // Avoid writing duplicate log entries
+        if (status === 'checkin' && isCurrentlyCheckedIn) return;
+        if (status === 'checkout' && !isCurrentlyCheckedIn) return;
+
+        const newLogRef = push(logRef);
         const userLocation = await getUserLocation();
 
         await set(newLogRef, {
@@ -145,12 +168,13 @@ const useLocationTracker = () => {
       } catch (error) {
         console.error("Error writing log: ", error);
       } finally {
-        setIsProcessing(false); // Reset processing state
+        setIsProcessing(false);
       }
     },
     [updateDailyRecord, userId, getCurrentDateStr, getUserLocation, isProcessing, user]
   );
 
+  // Check location and update status
   const checkLocation = useCallback(() => {
     if (!officeLocation || !checkinDistance || !userId) return;
 
@@ -187,6 +211,7 @@ const useLocationTracker = () => {
       .catch((error) => console.error("Error getting location: ", error));
   }, [writeLog, calculateEffectiveTime, officeLocation, checkinDistance, userId, getCurrentDateStr, getUserLocation]);
 
+  // Set up location checking interval
   useEffect(() => {
     if (officeLocation && checkinDistance && userId) {
       checkLocation();
@@ -195,6 +220,7 @@ const useLocationTracker = () => {
     }
   }, [checkLocation, officeLocation, checkinDistance, userId]);
 
+  // Listen for real-time updates to logs
   useEffect(() => {
     if (!userId) return;
 
@@ -208,8 +234,8 @@ const useLocationTracker = () => {
     return () => unsubscribe();
   }, [calculateEffectiveTime, userId, getCurrentDateStr]);
 
-  console.log("ALL DATA", { status, distance, logs, effectiveTime, isCheckedIn, });
-  return { status, distance, logs, effectiveTime, isCheckedIn };
+  console.log("ALL DATA", { status, distance, logs, effectiveTime, isCheckedIn, officeName });
+  return { status, distance, logs, effectiveTime, isCheckedIn, officeName, currentLocation }; // Return office name
 };
 
 export default useLocationTracker;

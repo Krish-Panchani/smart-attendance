@@ -33,7 +33,7 @@ const Navbar = () => {
   return (
     <>
       <motion.nav
-        className="bg-gradient-to-r from-teal-500 to-purple-600 p-6 shadow-md z-30 relative"
+        className="bg-gradient-to-r from-teal-500 to-blue-600 p-6 shadow-md z-30 relative"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}

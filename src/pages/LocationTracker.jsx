@@ -5,7 +5,7 @@ import TodayLogs from '../components/TodayLogs';
 import useAuth from '../hooks/useAuth';
 
 const LocationTracker = () => {
-  const { status, distance, logs, effectiveTime } = useLocationTracker();
+  const { status, distance, logs, effectiveTime, officeName, currentLocation } = useLocationTracker();
   const user = useAuth();
 
   return (
@@ -13,7 +13,7 @@ const LocationTracker = () => {
     {
       user ? (
         <div className="p-6 max-w-3xl mx-auto bg-white shadow-md rounded-lg">
-        <LocationStatus status={status} distance={distance || 'Distance unknown'} />
+        <LocationStatus status={status} distance={distance || 'Distance unknown'} officeName={officeName || 'Not Found'} userLocation={currentLocation} />
         <TodayOfficeTime logs={logs} effectiveTime={effectiveTime} />
         <TodayLogs logs={logs} />
       </div>

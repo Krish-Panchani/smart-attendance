@@ -43,7 +43,12 @@ const useLocationTracker = () => {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (position) => resolve({ lat: position.coords.latitude, lon: position.coords.longitude }),
-          (error) => reject(error)
+          (error) => reject(error),
+          {
+            enableHighAccuracy: true, // Request high accuracy
+            timeout: 5000,            // Set timeout to 5 seconds
+            maximumAge: 10000         // Do not use location data older than 10 seconds
+          }
         );
       } else {
         reject(new Error("Geolocation is not supported by this browser."));
@@ -185,7 +190,7 @@ const useLocationTracker = () => {
   useEffect(() => {
     if (officeLocation && checkinDistance && userId) {
       checkLocation();
-      const intervalId = setInterval(checkLocation, 5000);
+      const intervalId = setInterval(checkLocation, 10000);
       return () => clearInterval(intervalId);
     }
   }, [checkLocation, officeLocation, checkinDistance, userId]);
@@ -203,6 +208,7 @@ const useLocationTracker = () => {
     return () => unsubscribe();
   }, [calculateEffectiveTime, userId, getCurrentDateStr]);
 
+  console.log("ALL DATA", { status, distance, logs, effectiveTime, isCheckedIn, });
   return { status, distance, logs, effectiveTime, isCheckedIn };
 };
 
